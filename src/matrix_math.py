@@ -14,7 +14,8 @@ class Matrix[T]:
         return  self.per_element(lambda ele: -ele)
 
     def __add__(self, other: Self):
-        assert self.size == other.size, "Sizes are not equal."
+        assert self.size == other.size, \
+                f"Sizes are not equal. {self.size} and {other.size}."
         return Matrix(
             (ele1 + ele2 for ele1, ele2 in zip(row1, row2))
             for row1, row2 in zip(self.data, other.data)
