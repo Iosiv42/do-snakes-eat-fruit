@@ -8,7 +8,9 @@ import pygame
 from pygame.locals import K_RIGHT, K_UP, K_LEFT, K_DOWN
 
 from matrix_math import Vector
-from globals import DIRS, GRID_WIDHT, GRID_HEIGHT, SCALE_X, SCALE_Y, PROJ_MATRIX
+from globals import (
+    DIRS, GRID_WIDHT, GRID_HEIGHT, SCALE_X, SCALE_Y, PROJ_MATRIX, master_volume
+)
 from fruit import Fruit
 
 
@@ -33,6 +35,7 @@ class Snake:
         # self.body start is head and end is tail.
         # It contains direction for next cell (part) of snake body.
         self.body = deque((head_dir, head_dir))
+        self.part_poses = []
         self.head_pos = head_pos
         self.head_dir = head_dir
         self.alive = True
@@ -40,6 +43,10 @@ class Snake:
         # Specify how many steps needed to go one step forward.
         self.frames_per_step = frames_per_step
         self.frame = 1
+
+        self.sfx_channel = pygame.mixer.Channel(1)
+        self.sfx_channel.set_volume(master_volume)
+        self.create_sfxs()
 
     def update(self, fruit: Fruit) -> None:
         """ Update entity. """
@@ -51,8 +58,8 @@ class Snake:
             return
 
         if fruit.is_collelcted(self.head_pos):
-            self.body.append(self.body[-1])
-            fruit.collect()
+            self.power_up()
+            fruit.collect(self)
 
         # Go one step forward if enough frames elapsed.
 
@@ -71,32 +78,48 @@ class Snake:
         """ Handle key event to proceed snake movement. """
 
         assert event.type == pygame.KEYDOWN, "Event type is not pygame.KEYDOWN"
-        if event.key in {K_RIGHT, K_UP, K_LEFT, K_DOWN}:
+        if (event.key in {K_RIGHT, K_UP, K_LEFT, K_DOWN}
+            and DIRS[event.key] != self.head_dir):
             self.head_dir = -DIRS[event.key]
+
+    def power_up(self) -> None:
+        self.body.append(self.body[-1])
+
+        self.sfx_channel.play(self.power_up_sfx)
+        while self.sfx_channel.get_busy():
+            pass
 
     def draw(self, screen: pygame.Surface):
         """ Draw entity. """
 
-        curr_pos = self.head_pos
-        prev_poses = set()
-        for idx, direction in enumerate(self.body):
-            if idx == 0:
-                color = (255, 0, 0)
-            else:
-                color = (255, 255, 255)
-
-            curr_pos[0][0] %= GRID_WIDHT
-            curr_pos[1][0] %= GRID_HEIGHT
-            projected = PROJ_MATRIX * curr_pos
+        for idx, pos in enumerate(self.get_part_poses()):
+            color = (255, 0, 0) if idx == 0 else (255,) * 3
+            window_pos = PROJ_MATRIX * pos
 
             pygame.draw.rect(
                 screen, color,
-                (projected.transpose()[0], (SCALE_X, SCALE_Y))
+                (window_pos.transpose()[0], (SCALE_X, SCALE_Y))
             )
 
-            if self.head_pos - self.head_dir in prev_poses:
-                self.alive = False
-            else:
-                prev_poses.add(curr_pos)
+    def get_part_poses(self) -> bool:
+        curr_pos = self.head_pos
+        next_head_pos = self.head_pos - self.head_dir
+        for idx, direction in enumerate(self.body):
+            curr_pos[0][0] %= GRID_WIDHT
+            curr_pos[1][0] %= GRID_HEIGHT
 
+            if curr_pos == next_head_pos and idx != 0:
+                self.die()
+
+            yield curr_pos
             curr_pos += direction
+
+    def create_sfxs(self) -> None:
+        self.power_up_sfx = pygame.mixer.Sound("sfx/snake/power_up.wav")
+        self.death_sfx = pygame.mixer.Sound("sfx/snake/death.wav")
+
+    def die(self) -> None:
+        # Dead inside cannot die.
+        if self.alive:
+            self.alive = False
+            self.sfx_channel.queue(self.death_sfx)

@@ -6,13 +6,15 @@ from pygame.locals import K_RIGHT, K_UP, K_LEFT, K_DOWN    # pylint: disable=E04
 
 from matrix_math import Matrix, Vector
 
+master_volume = 100
+
 # Window size.
 WIDTH: Final = 800
 HEIGHT: Final = 800
 
 # Game grid size.
-GRID_WIDHT: Final = 20
-GRID_HEIGHT: Final = 20
+GRID_WIDHT: Final = 10
+GRID_HEIGHT: Final = 10
 
 # Map pressed keys to directions.
 # 'Cause of y axis goes downwards down and up dirs. are opposite.
