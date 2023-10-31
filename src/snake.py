@@ -78,9 +78,11 @@ class Snake:
         """ Handle key event to proceed snake movement. """
 
         assert event.type == pygame.KEYDOWN, "Event type is not pygame.KEYDOWN"
-        if (event.key in {K_RIGHT, K_UP, K_LEFT, K_DOWN}
-            and DIRS[event.key] != self.head_dir):
-            self.head_dir = -DIRS[event.key]
+        try:
+            if (new_dir := DIRS[event.key]) != self.head_dir:
+                self.head_dir = -new_dir
+        except KeyError:
+            pass
 
     def power_up(self) -> None:
         self.body.append(self.body[-1])
